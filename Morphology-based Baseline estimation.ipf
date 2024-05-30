@@ -67,8 +67,8 @@ function/WAVE ModifBG(wv,s)
 	duplicate/O wv $( nameofwave(wv)+"_M")
 	wave wvM =  $( nameofwave(wv)+"_M")
 	
-	wave wvTemp1 = dilation(erosion(wv,s),s)
-	wave wvTemp2 = erosion(dilation(wv,s),s)
+	wave wvTemp1 = dilation(opening(wv,s),s)
+	wave wvTemp2 = erosion(opening(wv,s),s)
 	wvM[] = (wvTemp1 + wvTemp2)/2
 	return  wvM
 end
@@ -94,10 +94,10 @@ function wvAllClose (wv1, wv2 [, atol, rtol])
 	wave wv1, wv2
 	variable atol, rtol
 	if(paramisdefault(atol))
-		atol  = 5e-05
+		atol  = 1e-05
 	endif
 	if(paramisdefault(rtol))
-		rtol  = 5e-05
+		rtol  = 1e-05
 	endif
 	
 	 
@@ -123,10 +123,10 @@ Function BGsbtr_MorphBsd(wv, rs [,atol , rtol, cycle_limit])
 	variable atol, rtol, cycle_limit
 	
 	if(paramisdefault(atol))
-		atol  = 5e-05
+		atol  = 1e-05
 	endif
 	if(paramisdefault(rtol))
-		rtol  = 5e-05
+		rtol  = 1e-05
 	endif
 	if(paramisdefault(cycle_limit))
 		cycle_limit = 2000
@@ -195,10 +195,10 @@ Function BGsbtr_MorphBsd_upd(wv, rs, s [,atol , rtol, cycle_limit])
 	variable s, atol, rtol, cycle_limit
 	
 	if(paramisdefault(atol))
-		atol  = 5e-05
+		atol  = 1e-05
 	endif
 	if(paramisdefault(rtol))
-		rtol  = 5e-05
+		rtol  = 1e-05
 	endif
 	if(paramisdefault(cycle_limit))
 		cycle_limit = 200
@@ -271,7 +271,7 @@ Function bt_getSetNames(ba) : ButtonControl
 			print("@Morphology based BG subtraction for wave ::: " + nameofwave(wv) )
 			//setscale 合わせる
 			
-			SetScale/P x, 0, rs[1] -rs[0], wv
+			//SetScale/P x, 0, rs[1] -rs[0], wv
 			BGsbtr_MorphBsd(wv, rs)
 			//sの値をBoxにセット
 			DoWindow/F $("BGsubtraction")
