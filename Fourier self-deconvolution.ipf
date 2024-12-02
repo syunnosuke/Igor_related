@@ -1,9 +1,5 @@
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 
-//reference
-//Kauppinen JK, Moffatt DJ, Mantsch HH, Cameron DG. Fourier Self-Deconvolution: A Method for Resolving Intrinsically Overlapped Bands. 
-//Applied Spectroscopy. 1981;35(3):271-276. doi:10.1366/0003702814732634
-
 //2023.12.10 Syunnosuke SUWA coded
 //UI
 Menu "macroPanel"
@@ -34,9 +30,9 @@ Window winFSD() : Panel
 	SetVariable sv_wv,userdata(ResizeControlsInfo)= A"!!,Hq!!#Aj!!#>V!!#<8z!!#](Aon\"Qzzzzzzzzzzzzzz!!#](Aon\"Qzz"
 	SetVariable sv_wv,userdata(ResizeControlsInfo) += A"zzzzzzzzzzzz!!#u:Du]k<zzzzzzzzzzz"
 	SetVariable sv_wv,userdata(ResizeControlsInfo) += A"zzz!!#u:Du]k<zzzzzzzzzzzzzz!!!"
-	SetVariable sv_wv,value= _STR:"indene_I"
+	SetVariable sv_wv,value= _STR:"wave"
 	SetVariable sv_rs,pos={70,75},size={150,16},proc=sv_rsName
-	SetVariable sv_rs,value= _STR:"raman_shift_231204_I"
+	SetVariable sv_rs,value= _STR:"rs"
 	Button bt_set,pos={68,97},size={70,20},proc=bt_FSDsetCalc,title="Set calc"
 	Slider sd_AW,pos={40,250},size={214,57},proc=sd_aw_range
 	Slider sd_AW,userdata(ResizeControlsInfo)= A"!!,Fs!!#AI!!#Ae!!#>Zz!!#](Aon\"Qzzzzzzzzzzzzzz!!#](Aon\"Qzz"
@@ -54,9 +50,39 @@ Window winFSD() : Panel
 EndMacro
 
 //Panel functions
-
-//sv_wvName, sv_rsName 定義済み
 //root:set_wvName, root:set_rsName
+
+Function sv_wvName(sva) : SetVariableControl
+//wave名を取得
+	STRUCT WMSetVariableAction &sva
+
+	switch( sva.eventCode )
+		case 1: // mouse up
+		case 2: // Enter key
+			string/G root:set_wvName = sva.sval
+			break
+		case 3: // Live update	
+		case -1: // control being killed
+			break
+	endswitch
+	return 0
+End
+
+Function sv_rsName(sva) : SetVariableControl
+//raman_shift名を取得
+	STRUCT WMSetVariableAction &sva
+
+	switch( sva.eventCode )
+		case 1: // mouse up
+		case 2: // Enter key
+			string/G root:set_rsName = sva.sval
+			break
+		case 3: // Live update	
+		case -1: // control being killed
+			break
+	endswitch
+	return 0
+End
 
 Function  sv_ls_SldrMax(sva) : SetVariableControl
 	STRUCT WMSetVariableAction &sva
@@ -91,28 +117,38 @@ End
 Function sd_ls_range(sa) : SliderControl
 //スライダー LS
 	STRUCT WMSliderAction &sa
-	NVAR val_lsSmx = root:set_lsSldMx 
-	Slider sd_LS, limits = {0, val_lsSmx,0.01}
+	NVAR val_lsSmx = root:set_lsSldMx //
+	Slider sd_LS, limits = {0, val_lsSmx,0.1}
 	variable/G root:sd_ls_csrVal = sa.curval
-
-	SVAR strWv =root:set_wvName
-	SVAR strRs =root:set_rsName
-	wave wv = $strWv
-	wave rs = $strRs
-	
-	NVAR sd_ls_val =  root:sd_ls_csrVal 
-	NVAR sd_aw_val =  root:sd_aw_csrVal 
 	
 	switch( sa.eventCode )
 		case -1: // control being killed
 			break
 		default:
 			if( sa.eventCode & 1 ) // value set
-				Slider sd_LS, limits = {0, val_lsSmx,0.01}
+				//variable/G root:sd_ls_csrVal = sa.curval
+				NVAR sd_ls_val =  root:sd_ls_csrVal 
+				NVAR sd_aw_val =  root:sd_aw_csrVal 
+				
+				Slider sd_LS, limits = {0, val_lsSmx,0.1}
+				//FSD を計算
+				//既にあるwaveを変更する形で計算
+				SVAR strWv =root:set_wvName
+				SVAR strRs =root:set_rsName
+				wave wv = $strWv
+				wave rs = $strRs
+				//print(sd_ls_val)
+				//print(sd_aw_val)
 				DoWindow/F $("FSD")
 				ValDisplay vd_ls value =_NUM: sd_ls_val
-
-				FSD_calc(wv, rs, sd_ls_val, sd_aw_val)	
+				
+				//calc update
+				SVAR strWv =root:set_wvName
+				SVAR strRs =root:set_rsName
+				wave wv = $strWv
+				wave rs = $strRs
+				FSD_calc(wv, rs, sd_ls_val, sd_aw_val)
+				
 			endif
 			break
 	endswitch
@@ -123,26 +159,35 @@ Function sd_aw_range(sa) : SliderControl
 //スライダー AW
 	STRUCT WMSliderAction &sa
 	NVAR val_awSmx = root:set_awSldMx 
-	Slider sd_AW, limits = {0, val_awSmx,0.01}
+	Slider sd_AW, limits = {0, val_awSmx,0.05}
 	variable/G root:sd_aw_csrVal = sa.curval
-
-	SVAR strWv =root:set_wvName
-	SVAR strRs =root:set_rsName
-	wave wv = $strWv
-	wave rs = $strRs
-	
-	NVAR sd_aw_val =  root:sd_aw_csrVal 
-	NVAR sd_ls_val =  root:sd_ls_csrVal 
 	switch( sa.eventCode )
 		case -1: // control being killed
 			break
 		default:
 			if( sa.eventCode & 1 ) // value set
-				Slider sd_AW, limits = {0, val_awSmx,0.01}
+				//variable/G root:sd_aw_csrVal = sa.curval
+				NVAR sd_aw_val =  root:sd_aw_csrVal 
+				NVAR sd_ls_val =  root:sd_ls_csrVal 
+				
+				Slider sd_AW, limits = {0, val_awSmx,0.05}
+				//FSDを計算
+				//既にあるwaveを変更する形で計算
+				SVAR strWv =root:set_wvName
+				SVAR strRs =root:set_rsName
+				wave wv = $strWv
+				wave rs = $strRs
+				
 				DoWindow/F $("FSD")
 				ValDisplay vd_aw value =_NUM: sd_aw_val
 				
-				FSD_calc(wv, rs, sd_ls_val, sd_aw_val)	
+				//calc update
+				SVAR strWv =root:set_wvName
+				SVAR strRs =root:set_rsName
+				wave wv = $strWv
+				wave rs = $strRs
+				FSD_calc(wv, rs, sd_ls_val, sd_aw_val)
+				
 			endif
 			break
 	endswitch
@@ -152,31 +197,22 @@ End
 Function bt_FSDsetCalc(ba) : ButtonControl
 //wv ,rs, LS, AWを取得、計算を実行する
 	STRUCT WMButtonAction &ba
-	
-	SVAR strWv =root:set_wvName
-	SVAR strRs =root:set_rsName
-	wave wv = $strWv
-	wave rs = $strRs
-	NVAR sd_aw_val =  root:sd_aw_csrVal 
-	NVAR sd_ls_val =  root:sd_ls_csrVal 
-	
+
 	switch( ba.eventCode )
 		case 2: // mouse up
 			
-			if( mod(dimsize(wv,0), 2) ==1 ||mod(dimsize(rs,0), 2) ==1 )
-				print("Error:  the num of  row  must be even")
-				return -1
-			endif
+			SVAR strWv =root:set_wvName
+			SVAR strRs =root:set_rsName
+			wave wv = $strWv
+			wave rs = $strRs
 			
 			// ls, awの取得
 			variable ls = 5
 			variable aw = 0.25
-			//sliderのvalueをセット 
-			DoWindow/F $("FSD")
-			Slider sd_LS, limits = {0, ls *2, 0.01}
-			Slider sd_AW, limits = {0, aw *2, 0.01}
-			ValDisplay vd_ls value =_NUM: sd_ls_val
-			ValDisplay vd_aw value =_NUM: sd_aw_val
+			//sliderのvalueをセット x2
+			Slider sd_LS, limits = {0, ls *2, 0.1}
+			Slider sd_AW, limits = {1, aw *2, 0.05}
+			
 			
 			print("Fourie Self-deconvolution ::: " + nameofwave(wv) +", " +(nameofwave(rs)))
 			wave wvRes = FSD_calc(wv, rs, ls, aw)
@@ -185,6 +221,13 @@ Function bt_FSDsetCalc(ba) : ButtonControl
 			AppendToGraph wvRes vs rs
 			//ModifyGraph lsize=1.5
 			GradationRainbow()
+			
+			//sの値をBoxにセット
+			NVAR sd_aw_val =  root:sd_aw_csrVal 
+			NVAR sd_ls_val =  root:sd_ls_csrVal 
+			DoWindow/F $("FSD")
+			ValDisplay vd_ls value =_NUM: sd_ls_val
+			ValDisplay vd_aw value =_NUM: sd_aw_val
 			break
 		case -1: // control being killed
 			break
